@@ -6,8 +6,6 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
 # Simulated database
-from werkzeug.security import generate_password_hash
-
 users = {
     'admin': {'password': generate_password_hash('adminpassword'), 'role': 'admin'},
     'drmonika': {'password': generate_password_hash('1234'), 'role': 'doctor'},
@@ -157,11 +155,11 @@ def set_availability():
     doctor = session['username']
     start_date = request.form['start_date']
     start_time = request.form['start_time']
-    end_date = request.form['end_date']  # Added end_date field
+    end_date = request.form['end_date']
     end_time = request.form['end_time']
     
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
-    availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')  # Updated to use end_date
+    availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
 
     available_doctors[doctor] = (availability_start.strftime('%Y-%m-%d %H:%M'), availability_end.strftime('%Y-%m-%d %H:%M'))
 
@@ -195,11 +193,11 @@ def update_schedule():
     doctor = request.form['doctor']
     start_date = request.form['start_date']
     start_time = request.form['start_time']
-    end_date = request.form['end_date']  # Added end_date field
+    end_date = request.form['end_date']
     end_time = request.form['end_time']
-    
+
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
-    availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')  # Updated to use end_date
+    availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
 
     available_doctors[doctor] = (availability_start.strftime('%Y-%m-%d %H:%M'), availability_end.strftime('%Y-%m-%d %H:%M'))
 
@@ -211,13 +209,18 @@ def update_break():
         return redirect(url_for('index'))
 
     doctor = request.form['doctor']
-    break_duration = int(request.form['break_duration'])
-    break_end_time = get_indian_time() + timedelta(minutes=break_duration)
+    break_start_date = request.form['break_start_date']
+    break_start_time = request.form['break_start_time']
+    break_end_date = request.form['break_end_date']
+    break_end_time = request.form['break_end_time']
+    
+    break_start = datetime.strptime(f'{break_start_date} {break_start_time}', '%Y-%m-%d %H:%M')
+    break_end = datetime.strptime(f'{break_end_date} {break_end_time}', '%Y-%m-%d %H:%M')
 
-    doctor_breaks[doctor] = break_end_time
+    doctor_breaks[doctor] = break_end
 
     return redirect(url_for('admin_control'))
-    
+
 @app.route('/keep_alive')
 def keep_alive():
     return '', 204  # Return a No Content response
@@ -230,3 +233,4 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
