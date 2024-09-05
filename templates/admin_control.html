@@ -59,10 +59,11 @@
                 <h3>Update Doctor Schedule</h3>
             </div>
             <div class="card-body">
-                <form action="/update_schedule" method="post">
+                <form action="{{ url_for('update_schedule') }}" method="post">
                     <div class="mb-3">
                         <label for="doctor" class="form-label">Doctor</label>
-                        <select id="doctor" name="doctor" class="form-select">
+                        <select id="doctor" name="doctor" class="form-select" required>
+                            <!-- Populate doctor options -->
                             {% for doctor in users if users[doctor]['role'] == 'doctor' %}
                                 <option value="{{ doctor }}">{{ doctor }}</option>
                             {% endfor %}
@@ -75,6 +76,10 @@
                     <div class="mb-3">
                         <label for="start_time" class="form-label">Start Time</label>
                         <input type="time" id="start_time" name="start_time" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" id="end_date" name="end_date" class="form-control" required>
                     </div>
                     <div class="mb-3">
                         <label for="end_time" class="form-label">End Time</label>
@@ -91,18 +96,31 @@
                 <h3>Update Doctor Break</h3>
             </div>
             <div class="card-body">
-                <form action="/update_break" method="post">
+                <form action="{{ url_for('update_break') }}" method="post">
                     <div class="mb-3">
                         <label for="doctor" class="form-label">Doctor</label>
-                        <select id="doctor" name="doctor" class="form-select">
+                        <select id="doctor" name="doctor" class="form-select" required>
+                            <!-- Populate doctor options -->
                             {% for doctor in users if users[doctor]['role'] == 'doctor' %}
                                 <option value="{{ doctor }}">{{ doctor }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="break_duration" class="form-label">Break Duration (minutes)</label>
-                        <input type="number" id="break_duration" name="break_duration" class="form-control" required>
+                        <label for="break_start_date" class="form-label">Break Start Date</label>
+                        <input type="date" id="break_start_date" name="break_start_date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="break_start_time" class="form-label">Break Start Time</label>
+                        <input type="time" id="break_start_time" name="break_start_time" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="break_end_date" class="form-label">Break End Date</label>
+                        <input type="date" id="break_end_date" name="break_end_date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="break_end_time" class="form-label">Break End Time</label>
+                        <input type="time" id="break_end_time" name="break_end_time" class="form-control" required>
                     </div>
                     <button type="submit" class="btn btn-primary">Update Break</button>
                 </form>
@@ -118,4 +136,3 @@
 </body>
 
 </html>
-
