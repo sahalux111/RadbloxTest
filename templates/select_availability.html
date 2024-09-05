@@ -11,12 +11,16 @@
         <h1 class="mb-4">Select Availability</h1>
         <form action="{{ url_for('set_availability') }}" method="POST">
             <div class="mb-3">
-                <label for="start_date" class="form-label">Date</label>
+                <label for="start_date" class="form-label">Start Date</label>
                 <input type="date" class="form-control" id="start_date" name="start_date" required>
             </div>
             <div class="mb-3">
                 <label for="start_time" class="form-label">Start Time</label>
                 <input type="time" class="form-control" id="start_time" name="start_time" required>
+            </div>
+            <div class="mb-3">
+                <label for="end_date" class="form-label">End Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" required>
             </div>
             <div class="mb-3">
                 <label for="end_time" class="form-label">End Time</label>
@@ -27,3 +31,4 @@
     </div>
 </body>
 </html>
+
