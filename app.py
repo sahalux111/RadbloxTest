@@ -193,11 +193,11 @@ def update_schedule():
     doctor = request.form['doctor']
     start_date = request.form['start_date']
     start_time = request.form['start_time']
-    end_date = request.form['end_date']
+    end_date = request.form['end_date']  # Add end_date field
     end_time = request.form['end_time']
-
+    
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
-    availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
+    availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')  # Update to use end_date
 
     available_doctors[doctor] = (availability_start.strftime('%Y-%m-%d %H:%M'), availability_end.strftime('%Y-%m-%d %H:%M'))
 
