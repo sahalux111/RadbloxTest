@@ -1,120 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QA Radiographer Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-
-        h1, h3 {
-            color: #000000; /* Black color for headings */
-        }
-
-        .list-group-item {
-            margin-bottom: 10px;
-            border-radius: 5px;
-            padding: 15px;
-            border: 1px solid #dddddd;
-        }
-
-        .bg-available {
-            background-color: #e9ecef;
-            border-left: 5px solid #28a745;
-        }
-
-        .bg-upcoming {
-            background-color: #e9ecef;
-            border-left: 5px solid #17a2b8;
-        }
-
-        .bg-break {
-            background-color: #e9ecef;
-            border-left: 5px solid #ffc107;
-        }
-
-        .btn-danger {
-            background-color: #dc3545;
-            border-color: #dc3545;
-        }
-
-        .btn-danger:hover {
-            background-color: #c82333;
-            border-color: #bd2130;
-        }
-
-        .logo {
-            max-width: 150px;
-        }
-    </style>
+    <title>QA Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-
 <body>
-    <div class="container my-5">
-        <div class="text-center mb-4">
-            <img src="static/images/logo.png" alt="Company Logo" class="logo mb-3">
-            <h1>QA Radiographer Dashboard</h1>
-            <p class="lead">Manage doctor availability, breaks, and view upcoming schedules.</p>
-        </div>
-
-        <!-- Currently Available Doctors -->
-        <div class="mb-4">
-            <h3>Currently Available Doctors</h3>
-            {% if available_now %}
-            <ul class="list-group">
-                {% for doctor, end_time in available_now.items() %}
-                <li class="list-group-item bg-available">
-                    <strong>{{ doctor }}</strong> is available until <span class="badge bg-success">{{ end_time }}</span>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p>No doctors are currently available.</p>
-            {% endif %}
-        </div>
-
-        <!-- Upcoming Scheduled Doctors -->
-        <div class="mb-4">
-            <h3>Upcoming Scheduled Doctors</h3>
-            {% if upcoming_scheduled %}
-            <ul class="list-group">
-                {% for doctor, times in upcoming_scheduled.items() %}
-                <li class="list-group-item bg-upcoming">
-                    <strong>{{ doctor }}</strong> will be available from <span class="badge bg-info">{{ times[0] }}</span> to <span class="badge bg-info">{{ times[1] }}</span>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p>No upcoming schedules.</p>
-            {% endif %}
-        </div>
-
-        <!-- Doctors on Break -->
-        <div class="mb-4">
-            <h3>Doctors on Break</h3>
-            {% if breaks %}
-            <ul class="list-group">
-                {% for doctor, end_time in breaks.items() %}
-                <li class="list-group-item bg-break">
-                    <strong>{{ doctor }}</strong> is on break until <span class="badge bg-warning text-dark">{{ end_time }}</span>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p>No doctors are currently on break.</p>
-            {% endif %}
-        </div>
-
-        <!-- Logout -->
-        <div class="text-center">
-            <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+    {% include 'navbar.html' %}
+    <div class="container mt-5">
+        <h2>QA Dashboard</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Doctors Under QA Review</h4>
+                <ul class="list-group">
+                    {% for doctor, note in doctor_notes.items() %}
+                    <li class="list-group-item"><strong>{{ doctor }}:</strong> {{ note }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
     </div>
 </body>
-
 </html>
 
