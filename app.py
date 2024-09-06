@@ -1,49 +1,37 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
-# Simulated database
-users = {
-    'admin': {'password': generate_password_hash('adminpassword'), 'role': 'admin'},
-    'drmonika': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'dramit': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drshashank': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drronak': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'dranthony': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'droguntade': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsmitha': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drnikita': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drkarim': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drfakhri': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'imugilteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drnamitha': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsachin': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drvivek': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drraj': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'rdlteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'ishateam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drdeepak': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsurendar': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'hemanth-qa': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsnehal': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'pranamika-qa': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'qa': {'password': generate_password_hash('qa'), 'role': 'qa_radiographer'}
-}
+# Configure PostgreSQL Database
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://radblox_user:5sKqQMJVDrRLeqwggLDrkxyuRrAF6pHg@dpg-crc56ujtq21c738ppm6g-a.oregon-postgres.render.com/radblox'
+db = SQLAlchemy(app)
 
-available_doctors = {}
-doctor_breaks = {}
-doctor_notes = {}  # Global dictionary to store notes for each doctor
+# Define your database models
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(50), nullable=False)
 
-# Function to get a list of doctor names
-def get_doctors():
-    return [user for user, details in users.items() if details['role'] == 'doctor']
+class Availability(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
 
-# Adjust time zone to Indian Standard Time (UTC+5:30)
-def get_indian_time():
-    return datetime.utcnow() + timedelta(hours=5, minutes=30)
+class Break(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    break_end_time = db.Column(db.DateTime, nullable=False)
+
+class Note(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
+    note_content = db.Column(db.Text, nullable=False)
 
 @app.route('/')
 def index():
@@ -56,9 +44,10 @@ def login():
     username = request.form['username']
     password = request.form['password']
 
-    if username in users and check_password_hash(users[username]['password'], password):
+    user = User.query.filter_by(username=username).first()
+    if user and check_password_hash(user.password_hash, password):
         session['username'] = username
-        session['role'] = users[username]['role']
+        session['role'] = user.role
         return redirect(url_for('dashboard'))
     return 'Invalid credentials'
 
@@ -72,28 +61,28 @@ def dashboard():
     upcoming_scheduled = {}
     breaks = {}
 
-    for doctor, break_end in doctor_breaks.items():
-        if current_time >= break_end:
+    # Fetch data from the database
+    doctor_availabilities = Availability.query.all()
+    doctor_breaks = Break.query.all()
+
+    for break_record in doctor_breaks:
+        if current_time >= break_record.break_end_time:
             # Break is over, move the doctor back to available
-            start_time, end_time = available_doctors.get(doctor, (None, None))
-            if start_time and end_time:
-                start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M')
-                end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M')
-                if start_time <= current_time <= end_time:
-                    available_now[doctor] = end_time.strftime('%Y-%m-%d %H:%M')
-            del doctor_breaks[doctor]
+            for availability in doctor_availabilities:
+                if availability.doctor_username == break_record.doctor_username:
+                    if availability.start_time <= current_time <= availability.end_time:
+                        available_now[break_record.doctor_username] = availability.end_time.strftime('%Y-%m-%d %H:%M')
+            db.session.delete(break_record)
+            db.session.commit()
         else:
             # Break is ongoing
-            breaks[doctor] = break_end.strftime('%Y-%m-%d %H:%M')
+            breaks[break_record.doctor_username] = break_record.break_end_time.strftime('%Y-%m-%d %H:%M')
 
-    for doctor, (start_time, end_time) in available_doctors.items():
-        start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M')
-        end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M')
-
-        if start_time <= current_time <= end_time and doctor not in doctor_breaks:
-            available_now[doctor] = end_time.strftime('%Y-%m-%d %H:%M')
-        elif start_time > current_time:
-            upcoming_scheduled[doctor] = (start_time.strftime('%Y-%m-%d %H:%M'), end_time.strftime('%Y-%m-%d %H:%M'))
+    for availability in doctor_availabilities:
+        if availability.start_time <= current_time <= availability.end_time and availability.doctor_username not in breaks:
+            available_now[availability.doctor_username] = availability.end_time.strftime('%Y-%m-%d %H:%M')
+        elif availability.start_time > current_time:
+            upcoming_scheduled[availability.doctor_username] = (availability.start_time.strftime('%Y-%m-%d %H:%M'), availability.end_time.strftime('%Y-%m-%d %H:%M'))
 
     if session['role'] == 'doctor':
         username = session['username']
@@ -101,7 +90,9 @@ def dashboard():
         breaks = {username: breaks.get(username)}
         return render_template('dashboard.html', available_now=available_now, breaks=breaks, upcoming_scheduled={})
 
-    if session['role'] == 'qa_radiographer' or session['role'] == 'admin':
+    if session['role'] in ['qa_radiographer', 'admin']:
+        notes = Note.query.all()
+        doctor_notes = {note.doctor_username: note.note_content for note in notes}
         return render_template('dashboard.html', available_now=available_now, breaks=breaks, upcoming_scheduled=upcoming_scheduled, doctor_notes=doctor_notes)
 
 @app.route('/select_availability')
@@ -109,10 +100,8 @@ def select_availability():
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    doctors = get_doctors()  # Retrieve doctor names
+    doctors = [user.username for user in User.query.filter_by(role='doctor').all()]
     return render_template('select_availability.html', doctors=doctors)
-
-from datetime import datetime
 
 @app.route('/set_availability', methods=['POST'])
 def set_availability():
@@ -128,12 +117,11 @@ def set_availability():
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
     availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
 
-    # Update the availability in the database or application state
-    # For example, you might use a dictionary to store this information
-    available_doctors[doctor] = (availability_start.strftime('%Y-%m-%d %H:%M'), availability_end.strftime('%Y-%m-%d %H:%M'))
+    new_availability = Availability(doctor_username=doctor, start_time=availability_start, end_time=availability_end)
+    db.session.add(new_availability)
+    db.session.commit()
 
     return redirect(url_for('dashboard'))
-
 
 @app.route('/take_break', methods=['POST'])
 def take_break():
@@ -144,7 +132,9 @@ def take_break():
     break_duration = int(request.form['break_duration'])
     break_end_time = get_indian_time() + timedelta(minutes=break_duration)
 
-    doctor_breaks[doctor] = break_end_time
+    new_break = Break(doctor_username=doctor, break_end_time=break_end_time)
+    db.session.add(new_break)
+    db.session.commit()
 
     return redirect(url_for('dashboard'))
 
@@ -153,8 +143,10 @@ def admin_control():
     if 'username' not in session or session['role'] != 'admin':
         return redirect(url_for('index'))
     
-    doctors = get_doctors()  # Retrieve doctor names
-    return render_template('admin_control.html', users=users, doctor_notes=doctor_notes, doctors=doctors)
+    doctors = [user.username for user in User.query.filter_by(role='doctor').all()]
+    notes = Note.query.all()
+    doctor_notes = {note.doctor_username: note.note_content for note in notes}
+    return render_template('admin_control.html', users=User.query.all(), doctor_notes=doctor_notes, doctors=doctors)
 
 @app.route('/add_note', methods=['POST'])
 def add_note():
@@ -164,7 +156,9 @@ def add_note():
     doctor = request.form['doctor']
     note = request.form['note']
 
-    doctor_notes[doctor] = note  # Save note for the doctor
+    new_note = Note(doctor_username=doctor, note_content=note)
+    db.session.add(new_note)
+    db.session.commit()
 
     return redirect(url_for('admin_control'))
 
@@ -182,7 +176,15 @@ def update_schedule():
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
     availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
 
-    available_doctors[doctor] = (availability_start.strftime('%Y-%m-%d %H:%M'), availability_end.strftime('%Y-%m-%d %H:%M'))
+    existing_availability = Availability.query.filter_by(doctor_username=doctor).first()
+    if existing_availability:
+        existing_availability.start_time = availability_start
+        existing_availability.end_time = availability_end
+    else:
+        new_availability = Availability(doctor_username=doctor, start_time=availability_start, end_time=availability_end)
+        db.session.add(new_availability)
+
+    db.session.commit()
 
     return redirect(url_for('admin_control'))
 
@@ -200,7 +202,14 @@ def update_break():
     break_start = datetime.strptime(f'{break_start_date} {break_start_time}', '%Y-%m-%d %H:%M')
     break_end = datetime.strptime(f'{break_end_date} {break_end_time}', '%Y-%m-%d %H:%M')
 
-    doctor_breaks[doctor] = break_end
+    existing_break = Break.query.filter_by(doctor_username=doctor).first()
+    if existing_break:
+        existing_break.break_end_time = break_end
+    else:
+        new_break = Break(doctor_username=doctor, break_end_time=break_end)
+        db.session.add(new_break)
+
+    db.session.commit()
 
     return redirect(url_for('admin_control'))
 
