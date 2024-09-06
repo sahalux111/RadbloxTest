@@ -9,8 +9,28 @@ app.secret_key = 'your_secret_key'
 users = {
     'admin': {'password': generate_password_hash('adminpassword'), 'role': 'admin'},
     'drmonika': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'qa': {'password': generate_password_hash('qa'), 'role': 'qa_radiographer'},
-    # Add other users as needed
+    'dramit': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drshashank': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drronak': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'dranthony': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'droguntade': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drsmitha': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drnikita': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drkarim': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drfakhri': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'imugilteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drnamitha': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drsachin': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drvivek': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drraj': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'rdlteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'ishateam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drdeepak': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drsurendar': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'ukteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'drsnehal': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'pranamika-qa': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'qa': {'password': generate_password_hash('qa'), 'role': 'qa_radiographer'}
 }
 
 available_doctors = {}
