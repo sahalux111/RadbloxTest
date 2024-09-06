@@ -8,3 +8,4 @@ pywhatkit==5.0
 pytz
 psycopg2-binary==2.9.6
 Flask-SQLAlchemy==3.0.0
+SQLAlchemy==2.0.13  # Ensure this version is compatible with Flask-SQLAlchemy
