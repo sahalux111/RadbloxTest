@@ -75,6 +75,7 @@
             padding: 15px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             margin-bottom: 10px;
+            border: 1px solid #d3d3d3; /* Border for info boxes */
         }
 
         .info-box + .info-box {
@@ -98,38 +99,6 @@
 
         .note-card + .note-card {
             margin-left: 0;
-        }
-
-        .world-clock {
-            background-color: #ffffff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .world-clock div {
-            text-align: center;
-        }
-
-        .world-clock img {
-            width: 20px; /* Adjust size as needed */
-            height: 20px; /* Adjust size as needed */
-            display: block;
-            margin: 0 auto;
-        }
-
-        .world-clock h4 {
-            margin-bottom: 5px;
-        }
-
-        .world-clock p {
-            font-size: 14px;
-            margin: 0;
         }
     </style>
 
@@ -184,12 +153,13 @@
         </div>
 
         <!-- World Clock Section -->
+        <!-- Removed world clock icons -->
         <div class="world-clock text-center mb-3">
-            <div><img src="static/images/icons/india-icon.png" alt="India"> <strong>India:</strong> <span id="time-india"></span></div>
-            <div><img src="path/to/new-york-icon.png" alt="New York"> <strong>New York:</strong> <span id="time-new-york"></span></div>
-            <div><img src="path/to/california-icon.png" alt="California"> <strong>California:</strong> <span id="time-california"></span></div>
-            <div><img src="path/to/florida-icon.png" alt="Florida"> <strong>Florida:</strong> <span id="time-florida"></span></div>
-            <div><img src="path/to/london-icon.png" alt="London"> <strong>London:</strong> <span id="time-london"></span></div>
+            <div><strong>India:</strong> <span id="time-india"></span></div>
+            <div><strong>New York:</strong> <span id="time-new-york"></span></div>
+            <div><strong>California:</strong> <span id="time-california"></span></div>
+            <div><strong>Florida:</strong> <span id="time-florida"></span></div>
+            <div><strong>London:</strong> <span id="time-london"></span></div>
         </div>
 
         <div class="dashboard-section row-flex">
@@ -307,5 +277,6 @@
 </body>
 
 </html>
+
 
 
