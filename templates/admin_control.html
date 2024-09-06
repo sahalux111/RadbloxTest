@@ -1,138 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Control Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-
-        h1, h3 {
-            color: #000000; /* Black color for headings */
-        }
-
-        .card {
-            margin-bottom: 20px;
-        }
-
-        .card-header {
-            background-color: #e9ecef;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .btn-primary {
-            background-color: #007bff;
-            border-color: #007bff;
-        }
-
-        .btn-primary:hover {
-            background-color: #0056b3;
-            border-color: #004085;
-        }
-
-        .btn-danger {
-            background-color: #dc3545;
-            border-color: #dc3545;
-        }
-
-        .btn-danger:hover {
-            background-color: #c82333;
-            border-color: #bd2130;
-        }
-    </style>
+    <title>Admin Control</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-
 <body>
-    <div class="container my-5">
-        <div class="text-center mb-4">
-            <h1>Admin Control Panel</h1>
-            <p class="lead">Manage doctors' schedules and breaks.</p>
-        </div>
+    {% include 'navbar.html' %}
+    <div class="container mt-5">
+        <h2>Admin Control Panel</h2>
+        <h4 class="mt-4">Manage Users</h4>
+        <ul class="list-group">
+            {% for user, details in users.items() %}
+            <li class="list-group-item">{{ user }} - {{ details['role'] }}</li>
+            {% endfor %}
+        </ul>
 
-        <!-- Update Schedule Form -->
-        <div class="card">
-            <div class="card-header">
-                <h3>Update Doctor Schedule</h3>
+        <h4 class="mt-5">Add Notes to Doctors</h4>
+        <form method="POST" action="{{ url_for('add_note') }}">
+            <div class="form-group mb-3">
+                <label for="doctor">Select Doctor</label>
+                <select name="doctor" id="doctor" class="form-select">
+                    {% for user, details in users.items() %}
+                    {% if details['role'] == 'doctor' %}
+                    <option value="{{ user }}">{{ user }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
             </div>
-            <div class="card-body">
-                <form action="{{ url_for('update_schedule') }}" method="post">
-                    <div class="mb-3">
-                        <label for="doctor" class="form-label">Doctor</label>
-                        <select id="doctor" name="doctor" class="form-select" required>
-                            <!-- Populate doctor options -->
-                            {% for doctor in users if users[doctor]['role'] == 'doctor' %}
-                                <option value="{{ doctor }}">{{ doctor }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="start_date" class="form-label">Start Date</label>
-                        <input type="date" id="start_date" name="start_date" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="start_time" class="form-label">Start Time</label>
-                        <input type="time" id="start_time" name="start_time" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="end_date" class="form-label">End Date</label>
-                        <input type="date" id="end_date" name="end_date" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="end_time" class="form-label">End Time</label>
-                        <input type="time" id="end_time" name="end_time" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Update Schedule</button>
-                </form>
+            <div class="form-group mb-3">
+                <label for="note">Note</label>
+                <textarea class="form-control" id="note" name="note" required></textarea>
             </div>
-        </div>
-
-        <!-- Update Break Form -->
-        <div class="card">
-            <div class="card-header">
-                <h3>Update Doctor Break</h3>
-            </div>
-            <div class="card-body">
-                <form action="{{ url_for('update_break') }}" method="post">
-                    <div class="mb-3">
-                        <label for="doctor" class="form-label">Doctor</label>
-                        <select id="doctor" name="doctor" class="form-select" required>
-                            <!-- Populate doctor options -->
-                            {% for doctor in users if users[doctor]['role'] == 'doctor' %}
-                                <option value="{{ doctor }}">{{ doctor }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="break_start_date" class="form-label">Break Start Date</label>
-                        <input type="date" id="break_start_date" name="break_start_date" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="break_start_time" class="form-label">Break Start Time</label>
-                        <input type="time" id="break_start_time" name="break_start_time" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="break_end_date" class="form-label">Break End Date</label>
-                        <input type="date" id="break_end_date" name="break_end_date" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="break_end_time" class="form-label">Break End Time</label>
-                        <input type="time" id="break_end_time" name="break_end_time" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Update Break</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Back to Dashboard Button -->
-        <div class="text-center mt-4">
-            <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
-        </div>
-
+            <button type="submit" class="btn btn-primary">Add Note</button>
+        </form>
     </div>
 </body>
-
 </html>
+
