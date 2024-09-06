@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f7f9;
+        }
+        .container {
+            margin-top: 20px;
+        }
+        .form-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .note-card {
+            border: 1px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h2>Admin Control</h2>
+            <h5>Users</h5>
+            <ul class="list-group">
+                {% for user, details in users.items() %}
+                    <li class="list-group-item">{{ user }} - Role: {{ details['role'] }}</li>
+                {% endfor %}
+            </ul>
+            <h5>Doctor Notes</h5>
+            <div class="row">
+                {% for doctor, note in doctor_notes.items() %}
+                    <div class="col-md-4">
+                        <div class="card note-card">
+                            <div class="card-header">{{ doctor }}</div>
+                            <div class="card-body">{{ note }}</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <h5>Add Note</h5>
+            <form action="{{ url_for('add_note') }}" method="post">
+                <div class="form-group">
+                    <label for="doctor">Doctor</label>
+                    <input type="text" class="form-control" id="doctor" name="doctor" required>
+                </div>
+                <div class="form-group">
+                    <label for="note">Note</label>
+                    <textarea class="form-control" id="note" name="note" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Note</button>
+            </form>
+            <h5>Update Schedule</h5>
+            <form action="{{ url_for('update_schedule') }}" method="post">
+                <div class="form-group">
+                    <label for="doctor">Doctor</label>
+                    <input type="text" class="form-control" id="doctor" name="doctor" required>
+                </div>
+                <div class="form-group">
+                    <label for="start_date">Start Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="start_time">Start Time</label>
+                    <input type="time" class="form-control" id="start_time" name="start_time" required>
+                </div>
+                <div class="form-group">
+                    <label for="end_date">End Date</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="end_time">End Time</label>
+                    <input type="time" class="form-control" id="end_time" name="end_time" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Schedule</button>
+            </form>
+            <h5>Update Break</h5>
+            <form action="{{ url_for('update_break') }}" method="post">
+                <div class="form-group">
+                    <label for="doctor">Doctor</label>
+                    <input type="text" class="form-control" id="doctor" name="doctor" required>
+                </div>
+                <div class="form-group">
+                    <label for="break_start_date">Break Start Date</label>
+                    <input type="date" class="form-control" id="break_start_date" name="break_start_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="break_start_time">Break Start Time</label>
+                    <input type="time" class="form-control" id="break_start_time" name="break_start_time" required>
+                </div>
+                <div class="form-group">
+                    <label for="break_end_date">Break End Date</label>
+                    <input type="date" class="form-control" id="break_end_date" name="break_end_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="break_end_time">Break End Time</label>
+                    <input type="time" class="form-control" id="break_end_time" name="break_end_time" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Break</button>
+            </form>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3">Back to Dashboard</a>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
