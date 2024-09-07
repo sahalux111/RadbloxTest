@@ -1,6 +1,9 @@
+import time
+import requests
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+from threading import Thread
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -9,33 +12,13 @@ app.secret_key = 'your_secret_key'
 users = {
     'admin': {'password': generate_password_hash('adminpassword'), 'role': 'admin'},
     'drmonika': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'dramit': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drshashank': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drronak': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'dranthony': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'droguntade': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsmitha': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drnikita': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drkarim': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drfakhri': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'imugilteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drnamitha': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsachin': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drvivek': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drraj': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'rdlteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'arun': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drdeepak': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsurendar': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'pranamika': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsnehal': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'hemanth': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    # Add other users as needed
     'qa': {'password': generate_password_hash('qa'), 'role': 'qa_radiographer'}
 }
 
 available_doctors = {}
 doctor_breaks = {}
-doctor_notes = {}  # Global dictionary to store notes for each doctor
+doctor_notes = {}
 
 # Function to get a list of doctor names
 def get_doctors():
@@ -74,7 +57,6 @@ def dashboard():
 
     for doctor, break_end in doctor_breaks.items():
         if current_time >= break_end:
-            # Break is over, move the doctor back to available
             start_time, end_time = available_doctors.get(doctor, (None, None))
             if start_time and end_time:
                 start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M')
@@ -83,7 +65,6 @@ def dashboard():
                     available_now[doctor] = end_time.strftime('%Y-%m-%d %H:%M')
             del doctor_breaks[doctor]
         else:
-            # Break is ongoing
             breaks[doctor] = break_end.strftime('%Y-%m-%d %H:%M')
 
     for doctor, (start_time, end_time) in available_doctors.items():
@@ -112,8 +93,6 @@ def select_availability():
     doctors = get_doctors()  # Retrieve doctor names
     return render_template('select_availability.html', doctors=doctors)
 
-from datetime import datetime
-
 @app.route('/set_availability', methods=['POST'])
 def set_availability():
     if 'username' not in session:
@@ -128,12 +107,9 @@ def set_availability():
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
     availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
 
-    # Update the availability in the database or application state
-    # For example, you might use a dictionary to store this information
     available_doctors[doctor] = (availability_start.strftime('%Y-%m-%d %H:%M'), availability_end.strftime('%Y-%m-%d %H:%M'))
 
     return redirect(url_for('dashboard'))
-
 
 @app.route('/take_break', methods=['POST'])
 def take_break():
@@ -210,8 +186,24 @@ def logout():
     session.pop('role', None)
     return redirect(url_for('index'))
 
+def ping_app():
+    while True:
+        try:
+            # Replace with your deployed app's URL
+            requests.get('https://your-app-url.com')
+            print("Ping successful!")
+        except Exception as e:
+            print(f"Ping failed: {e}")
+        time.sleep(15)  # Ping every 15 seconds
+
 if __name__ == '__main__':
+    # Start the pinging in a separate thread
+    ping_thread = Thread(target=ping_app)
+    ping_thread.daemon = True
+    ping_thread.start()
+
     app.run(debug=True)
+
 
 
 
