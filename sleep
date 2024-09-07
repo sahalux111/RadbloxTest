@@ -1,0 +1,16 @@
+import time
+import requests
+
+def ping_app():
+    while True:
+        try:
+            # Replace with your deployed app's URL
+            requests.get('https://radbloxtest.onrender.com')
+            print("Ping successful!")
+        except Exception as e:
+            print(f"Ping failed: {e}")
+        time.sleep(15)  # Ping every 15 seconds
+
+if __name__ == '__main__':
+    ping_app()
+
