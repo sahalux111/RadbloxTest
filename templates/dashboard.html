@@ -110,6 +110,13 @@
             flex: 1;
             text-align: center;
         }
+
+        .notes-tag {
+            font-size: 0.9em;
+            color: #007bff;
+            margin-left: 10px;
+            font-style: italic;
+        }
     </style>
 
     <!-- Auto-refresh script -->
@@ -179,6 +186,9 @@
                     {% for doctor, end_time in available_now.items() %}
                     <li class="list-group-item bg-available">
                         <strong>{{ doctor }}</strong> is available until <span class="badge bg-success">{{ end_time }}</span>
+                        {% if doctor in doctor_notes %}
+                        <span class="notes-tag">{{ doctor_notes[doctor] }}</span>
+                        {% endif %}
                     </li>
                     {% endfor %}
                 </ul>
@@ -195,6 +205,9 @@
                     {% for doctor, (start_time, end_time) in upcoming_scheduled.items() %}
                     <li class="list-group-item bg-upcoming">
                         <strong>{{ doctor }}</strong> will be available from <span class="badge bg-info">{{ start_time }}</span> to <span class="badge bg-info">{{ end_time }}</span>
+                        {% if doctor in doctor_notes %}
+                        <span class="notes-tag">{{ doctor_notes[doctor] }}</span>
+                        {% endif %}
                     </li>
                     {% endfor %}
                 </ul>
@@ -211,6 +224,9 @@
                     {% for doctor, break_end in breaks.items() %}
                     <li class="list-group-item bg-break">
                         <strong>{{ doctor }}</strong> is on break until <span class="badge bg-warning text-dark">{{ break_end }}</span>
+                        {% if doctor in doctor_notes %}
+                        <span class="notes-tag">{{ doctor_notes[doctor] }}</span>
+                        {% endif %}
                     </li>
                     {% endfor %}
                 </ul>
@@ -219,22 +235,6 @@
                 {% endif %}
             </div>
         </div>
-
-        {% if session['role'] != 'doctor' %}
-        <div class="dashboard-section">
-            <h3>Doctor Notes</h3>
-            <div class="row">
-                {% for doctor, note in doctor_notes.items() %}
-                <div class="col-md-6">
-                    <div class="note-card">
-                        <h4>{{ doctor }}</h4>
-                        <p>{{ note }}</p>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
 
         {% if session['role'] == 'doctor' %}
         <div class="dashboard-section">
