@@ -44,6 +44,7 @@ users = {
     'titus': {'password': generate_password_hash('1234'), 'role': 'doctor'},
     'arumugham': {'password': generate_password_hash('1234'), 'role': 'doctor'},
     'srijesh': {'password': generate_password_hash('1234'), 'role': 'doctor'},
+    'radstar': {'password': generate_password_hash('1234'), 'role': 'doctor'},
     'qa': {'password': generate_password_hash('qa'), 'role': 'qa_radiographer'}
 }
 
