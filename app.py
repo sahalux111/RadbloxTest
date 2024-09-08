@@ -13,10 +13,10 @@ app.secret_key = 'your_secret_key'
 # PostgreSQL connection details
 def get_db_connection():
     conn = psycopg2.connect(
-        host="localhost",
-        database="your_database_name",
-        user="your_database_user",
-        password="your_database_password"
+        host="dpg-creov63v2p9s73d1bm7g-a",
+        database="radbloxdashboard",
+        user="radblox",
+        password="ntupYx7U3hhVtxt8Y4Iq2uQQ4WuWmkjR"
     )
     return conn
 
