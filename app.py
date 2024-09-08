@@ -4,57 +4,21 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from threading import Thread
+import psycopg2
+from psycopg2.extras import DictCursor
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
-# Simulated database
-users = {
-    'sunil': {'password': generate_password_hash('sunilrbx'), 'role': 'admin'},
-    'arun': {'password': generate_password_hash('arunrbx'), 'role': 'admin'},
-    'shrini': {'password': generate_password_hash('shrinirbx'), 'role': 'admin'},
-    'sahal': {'password': generate_password_hash('sahalrbx'), 'role': 'admin'},
-    'anto': {'password': generate_password_hash('antorbx'), 'role': 'admin'},
-    'drmonika': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'dramit': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drshashank': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drronak': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'dranthony': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'droguntade': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsmitha': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drnikita': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drkarim': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drfakhri': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'imugilteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drnamitha': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsachin': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drvivek': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drraj': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'rdlteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'ishateam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drdeepak': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsurendar': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'ukteam': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'drsnehal': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'teslagroup': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'pranamika': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'hemanth': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'diana': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'muflih': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'titus': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'arumugham': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'srijesh': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'radstar': {'password': generate_password_hash('1234'), 'role': 'doctor'},
-    'qa': {'password': generate_password_hash('qa'), 'role': 'qa_radiographer'}
-}
-
-available_doctors = {}
-doctor_breaks = {}
-doctor_notes = {}
-
-# Function to get a list of doctor names
-def get_doctors():
-    return [user for user, details in users.items() if details['role'] == 'doctor']
+# PostgreSQL connection details
+def get_db_connection():
+    conn = psycopg2.connect(
+        host="localhost",
+        database="your_database_name",
+        user="your_database_user",
+        password="your_database_password"
+    )
+    return conn
 
 # Adjust time zone to Indian Standard Time (UTC+5:30)
 def get_indian_time():
@@ -71,10 +35,19 @@ def login():
     username = request.form['username']
     password = request.form['password']
 
-    if username in users and check_password_hash(users[username]['password'], password):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    
+    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+    user = cursor.fetchone()
+
+    if user and check_password_hash(user['password'], password):
         session['username'] = username
-        session['role'] = users[username]['role']
+        session['role'] = user['role']
         return redirect(url_for('dashboard'))
+
+    cursor.close()
+    conn.close()
     return 'Invalid credentials'
 
 @app.route('/dashboard')
@@ -87,26 +60,20 @@ def dashboard():
     upcoming_scheduled = {}
     breaks = {}
 
-    for doctor, break_end in doctor_breaks.items():
-        if current_time >= break_end:
-            start_time, end_time = available_doctors.get(doctor, (None, None))
-            if start_time and end_time:
-                start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M')
-                end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M')
-                if start_time <= current_time <= end_time:
-                    available_now[doctor] = end_time.strftime('%Y-%m-%d %H:%M')
-            del doctor_breaks[doctor]
-        else:
-            breaks[doctor] = break_end.strftime('%Y-%m-%d %H:%M')
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    
+    cursor.execute("SELECT * FROM availability WHERE availability_start <= %s AND availability_end >= %s", (current_time, current_time))
+    available_doctors = cursor.fetchall()
 
-    for doctor, (start_time, end_time) in available_doctors.items():
-        start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M')
-        end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M')
+    cursor.execute("SELECT * FROM breaks WHERE break_end >= %s", (current_time,))
+    active_breaks = cursor.fetchall()
 
-        if start_time <= current_time <= end_time and doctor not in doctor_breaks:
-            available_now[doctor] = end_time.strftime('%Y-%m-%d %H:%M')
-        elif start_time > current_time:
-            upcoming_scheduled[doctor] = (start_time.strftime('%Y-%m-%d %H:%M'), end_time.strftime('%Y-%m-%d %H:%M'))
+    for doctor in available_doctors:
+        available_now[doctor['doctor_id']] = doctor['availability_end'].strftime('%Y-%m-%d %H:%M')
+
+    for break_item in active_breaks:
+        breaks[break_item['doctor_id']] = break_item['break_end'].strftime('%Y-%m-%d %H:%M')
 
     if session['role'] == 'doctor':
         username = session['username']
@@ -115,14 +82,26 @@ def dashboard():
         return render_template('dashboard.html', available_now=available_now, breaks=breaks, upcoming_scheduled={})
 
     if session['role'] == 'qa_radiographer' or session['role'] == 'admin':
+        cursor.execute("SELECT * FROM doctor_notes")
+        doctor_notes = cursor.fetchall()
         return render_template('dashboard.html', available_now=available_now, breaks=breaks, upcoming_scheduled=upcoming_scheduled, doctor_notes=doctor_notes)
+
+    cursor.close()
+    conn.close()
 
 @app.route('/select_availability')
 def select_availability():
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    doctors = get_doctors()  # Retrieve doctor names
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    cursor.execute("SELECT username FROM users WHERE role = 'doctor'")
+    doctors = [row['username'] for row in cursor.fetchall()]
+    
+    cursor.close()
+    conn.close()
+    
     return render_template('select_availability.html', doctors=doctors)
 
 @app.route('/set_availability', methods=['POST'])
@@ -139,7 +118,17 @@ def set_availability():
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
     availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
 
-    available_doctors[doctor] = (availability_start.strftime('%Y-%m-%d %H:%M'), availability_end.strftime('%Y-%m-%d %H:%M'))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO availability (doctor_id, availability_start, availability_end)
+        VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
+    """, (doctor, availability_start, availability_end))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
     return redirect(url_for('dashboard'))
 
@@ -152,7 +141,17 @@ def take_break():
     break_duration = int(request.form['break_duration'])
     break_end_time = get_indian_time() + timedelta(minutes=break_duration)
 
-    doctor_breaks[doctor] = break_end_time
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO breaks (doctor_id, break_end)
+        VALUES ((SELECT id FROM users WHERE username = %s), %s)
+    """, (doctor, break_end_time))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
     return redirect(url_for('dashboard'))
 
@@ -161,7 +160,18 @@ def admin_control():
     if 'username' not in session or session['role'] != 'admin':
         return redirect(url_for('index'))
     
-    doctors = get_doctors()  # Retrieve doctor names
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    
+    cursor.execute("SELECT * FROM doctor_notes")
+    doctor_notes = cursor.fetchall()
+
+    cursor.execute("SELECT username FROM users WHERE role = 'doctor'")
+    doctors = [row['username'] for row in cursor.fetchall()]
+
+    cursor.close()
+    conn.close()
+    
     return render_template('admin_control.html', users=users, doctor_notes=doctor_notes, doctors=doctors)
 
 @app.route('/add_note', methods=['POST'])
@@ -172,43 +182,17 @@ def add_note():
     doctor = request.form['doctor']
     note = request.form['note']
 
-    doctor_notes[doctor] = note  # Save note for the doctor
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-    return redirect(url_for('admin_control'))
+    cursor.execute("""
+        INSERT INTO doctor_notes (doctor_id, note)
+        VALUES ((SELECT id FROM users WHERE username = %s), %s)
+    """, (doctor, note))
 
-@app.route('/update_schedule', methods=['POST'])
-def update_schedule():
-    if 'username' not in session or session['role'] != 'admin':
-        return redirect(url_for('index'))
-
-    doctor = request.form['doctor']
-    start_date = request.form['start_date']
-    start_time = request.form['start_time']
-    end_date = request.form['end_date']
-    end_time = request.form['end_time']
-    
-    availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
-    availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
-
-    available_doctors[doctor] = (availability_start.strftime('%Y-%m-%d %H:%M'), availability_end.strftime('%Y-%m-%d %H:%M'))
-
-    return redirect(url_for('admin_control'))
-
-@app.route('/update_break', methods=['POST'])
-def update_break():
-    if 'username' not in session or session['role'] != 'admin':
-        return redirect(url_for('index'))
-
-    doctor = request.form['doctor']
-    break_start_date = request.form['break_start_date']
-    break_start_time = request.form['break_start_time']
-    break_end_date = request.form['break_end_date']
-    break_end_time = request.form['break_end_time']
-    
-    break_start = datetime.strptime(f'{break_start_date} {break_start_time}', '%Y-%m-%d %H:%M')
-    break_end = datetime.strptime(f'{break_end_date} {break_end_time}', '%Y-%m-%d %H:%M')
-
-    doctor_breaks[doctor] = break_end
+    conn.commit()
+    cursor.close()
+    conn.close()
 
     return redirect(url_for('admin_control'))
 
@@ -221,7 +205,6 @@ def logout():
 def ping_app():
     while True:
         try:
-            # Replace with your deployed app's URL
             requests.get('https://your-app-url.com')
             print("Ping successful!")
         except Exception as e:
@@ -235,7 +218,6 @@ if __name__ == '__main__':
     ping_thread.start()
 
     app.run(debug=True)
-
 
 
 
