@@ -57,34 +57,47 @@ def dashboard():
 
     current_time = get_indian_time()
     available_now = {}
-    upcoming_scheduled = {}
+    qa_availability = {}
     breaks = {}
 
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
     
+    # Fetch doctor availability
     cursor.execute("SELECT * FROM availability WHERE availability_start <= %s AND availability_end >= %s", (current_time, current_time))
     available_doctors = cursor.fetchall()
 
+    # Fetch QA availability
+    cursor.execute("SELECT * FROM qa_availability WHERE availability_start <= %s AND availability_end >= %s", (current_time, current_time))
+    available_qas = cursor.fetchall()
+
+    # Fetch doctor breaks
     cursor.execute("SELECT * FROM breaks WHERE break_end >= %s", (current_time,))
     active_breaks = cursor.fetchall()
 
+    # Map doctors' availability and breaks
     for doctor in available_doctors:
         available_now[doctor['doctor_id']] = doctor['availability_end'].strftime('%Y-%m-%d %H:%M')
 
     for break_item in active_breaks:
         breaks[break_item['doctor_id']] = break_item['break_end'].strftime('%Y-%m-%d %H:%M')
 
+    # Map QA availability
+    for qa in available_qas:
+        qa_availability[qa['qa_id']] = qa['availability_end'].strftime('%Y-%m-%d %H:%M')
+
+    # Doctor-specific dashboard
     if session['role'] == 'doctor':
         username = session['username']
         available_now = {username: available_now.get(username)}
         breaks = {username: breaks.get(username)}
         return render_template('dashboard.html', available_now=available_now, breaks=breaks, upcoming_scheduled={})
 
+    # QA Radiographer or Admin dashboard
     if session['role'] == 'qa_radiographer' or session['role'] == 'admin':
         cursor.execute("SELECT * FROM doctor_notes")
         doctor_notes = cursor.fetchall()
-        return render_template('dashboard.html', available_now=available_now, breaks=breaks, upcoming_scheduled=upcoming_scheduled, doctor_notes=doctor_notes)
+        return render_template('dashboard.html', available_now=available_now, qa_availability=qa_availability, breaks=breaks, upcoming_scheduled={}, doctor_notes=doctor_notes)
 
     cursor.close()
     conn.close()
@@ -109,74 +122,39 @@ def set_availability():
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    doctor = session['username']
+    user_role = session['role']
     start_date = request.form['start_date']
     start_time = request.form['start_time']
     end_date = request.form['end_date']
     end_time = request.form['end_time']
-    
+
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
     availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO availability (doctor_id, availability_start, availability_end)
-        VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
-    """, (doctor, availability_start, availability_end))
+    # Check if the user is a doctor or QA
+    if user_role == 'doctor':
+        cursor.execute("""
+            INSERT INTO availability (doctor_id, availability_start, availability_end)
+            VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
+        """, (session['username'], availability_start, availability_end))
+    elif user_role == 'qa_radiographer':
+        cursor.execute("""
+            INSERT INTO qa_availability (qa_id, availability_start, availability_end)
+            VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
+        """, (session['username'], availability_start, availability_end))
 
     conn.commit()
     cursor.close()
     conn.close()
 
     return redirect(url_for('dashboard'))
-
-@app.route('/take_break', methods=['POST'])
-def take_break():
-    if 'username' not in session:
-        return redirect(url_for('index'))
-    
-    doctor = session['username']
-    break_duration = int(request.form['break_duration'])
-    break_end_time = get_indian_time() + timedelta(minutes=break_duration)
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO breaks (doctor_id, break_end)
-        VALUES ((SELECT id FROM users WHERE username = %s), %s)
-    """, (doctor, break_end_time))
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    return redirect(url_for('dashboard'))
-
-@app.route('/admin_control')
-def admin_control():
-    if 'username' not in session or session['role'] != 'admin':
-        return redirect(url_for('index'))
-    
-    conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=DictCursor)
-    
-    cursor.execute("SELECT * FROM doctor_notes")
-    doctor_notes = cursor.fetchall()
-
-    cursor.execute("SELECT username FROM users WHERE role = 'doctor'")
-    doctors = [row['username'] for row in cursor.fetchall()]
-
-    cursor.close()
-    conn.close()
-    
-    return render_template('admin_control.html', users=users, doctor_notes=doctor_notes, doctors=doctors)
 
 @app.route('/add_note', methods=['POST'])
 def add_note():
-    if 'username' not in session or session['role'] != 'admin':
+    if 'username' not in session or session['role'] not in ['admin', 'qa_radiographer']:
         return redirect(url_for('index'))
     
     doctor = request.form['doctor']
@@ -194,7 +172,30 @@ def add_note():
     cursor.close()
     conn.close()
 
-    return redirect(url_for('admin_control'))
+    return redirect(url_for('dashboard'))
+
+@app.route('/edit_note', methods=['POST'])
+def edit_note():
+    if 'username' not in session or session['role'] not in ['admin', 'qa_radiographer']:
+        return redirect(url_for('index'))
+
+    note_id = request.form['note_id']
+    new_note = request.form['new_note']
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE doctor_notes
+        SET note = %s
+        WHERE id = %s
+    """, (new_note, note_id))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect(url_for('dashboard'))
 
 @app.route('/logout')
 def logout():
@@ -219,5 +220,3 @@ if __name__ == '__main__':
 
     app.run(debug=True)
 
-
-  
