@@ -127,6 +127,7 @@ def set_availability():
     start_time = request.form['start_time']
     end_date = request.form['end_date']
     end_time = request.form['end_time']
+    cases_reported = request.form.get('cases_reported', 0)
 
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
     availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
@@ -134,15 +135,23 @@ def set_availability():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Check if the user is a doctor or QA
-    if user_role == 'doctor':
-        cursor.execute("""
-            INSERT INTO availability (doctor_id, availability_start, availability_end)
-            VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
-        """, (session['username'], availability_start, availability_end))
-    elif user_role == 'qa_radiographer':
+    if user_role == 'qa_radiographer':
+        # Validate cases reported
+        cursor.execute("SELECT cases_reported FROM qa_reports WHERE qa_id = (SELECT id FROM users WHERE username = %s) AND report_date = %s", (session['username'], get_indian_time().date()))
+        reported_cases = cursor.fetchone()
+        
+        if not reported_cases or reported_cases['cases_reported'] != int(cases_reported):
+            cursor.close()
+            conn.close()
+            return 'Number of cases reported does not match the previous day\'s report'
+
         cursor.execute("""
             INSERT INTO qa_availability (qa_id, availability_start, availability_end)
+            VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
+        """, (session['username'], availability_start, availability_end))
+    elif user_role == 'doctor':
+        cursor.execute("""
+            INSERT INTO availability (doctor_id, availability_start, availability_end)
             VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
         """, (session['username'], availability_start, availability_end))
 
@@ -197,6 +206,27 @@ def edit_note():
 
     return redirect(url_for('dashboard'))
 
+@app.route('/report_cases', methods=['POST'])
+def report_cases():
+    if 'username' not in session or session['role'] != 'qa_radiographer':
+        return redirect(url_for('index'))
+
+    cases_reported = request.form['cases_reported']
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO qa_reports (qa_id, report_date, cases_reported)
+        VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
+    """, (session['username'], get_indian_time().date(), cases_reported))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect(url_for('dashboard'))
+
 @app.route('/logout')
 def logout():
     session.pop('username', None)
@@ -219,4 +249,3 @@ if __name__ == '__main__':
     ping_thread.start()
 
     app.run(debug=True)
-
