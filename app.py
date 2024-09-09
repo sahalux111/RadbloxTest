@@ -3,53 +3,77 @@ import requests
 from flask import Flask, render_template, request, redirect, url_for, session
 from datetime import datetime, timedelta
 from threading import Thread
-import psycopg2
-from psycopg2.extras import DictCursor
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://<user>:<password>@<host>/<dbname>'
+db = SQLAlchemy(app)
 
-# PostgreSQL connection details
-def get_db_connection():
-    conn = psycopg2.connect(
-        host="dpg-creov63v2p9s73d1bm7g-a",
-        database="radbloxdashboard",
-        user="radblox",
-        password="ntupYx7U3hhVtxt8Y4Iq2uQQ4WuWmkjR"
-    )
-    return conn
+# Models
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(50), nullable=False)
 
-# Adjust time zone to Indian Standard Time (UTC+5:30)
+class Availability(db.Model):
+    __tablename__ = 'availability'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
+    user = db.relationship('User')
+
+class Break(db.Model):
+    __tablename__ = 'breaks'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    break_end = db.Column(db.DateTime, nullable=False)
+    user = db.relationship('User')
+
+class DoctorNote(db.Model):
+    __tablename__ = 'doctor_notes'
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    note = db.Column(db.Text, nullable=False)
+    user = db.relationship('User')
+
+class QAAvailability(db.Model):
+    __tablename__ = 'qa_availability'
+    id = db.Column(db.Integer, primary_key=True)
+    qa_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
+    user = db.relationship('User')
+
+# Function to get current Indian time
 def get_indian_time():
     return datetime.utcnow() + timedelta(hours=5, minutes=30)
 
+# Route for index
 @app.route('/')
 def index():
     if 'username' in session:
         return redirect(url_for('dashboard'))
     return render_template('login.html')
 
+# Route for login
 @app.route('/login', methods=['POST'])
 def login():
     username = request.form['username']
     password = request.form['password']
 
-    conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=DictCursor)
-    
-    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
-    user = cursor.fetchone()
+    user = User.query.filter_by(username=username).first()
 
-    # Direct password comparison without hash
-    if user and user['password'] == password:
+    if user and user.password == password:  # Password comparison with stored hash
         session['username'] = username
-        session['role'] = user['role']
+        session['role'] = user.role
         return redirect(url_for('dashboard'))
-
-    cursor.close()
-    conn.close()
     return 'Invalid credentials'
 
+# Route for dashboard
 @app.route('/dashboard')
 def dashboard():
     if 'username' not in session:
@@ -57,176 +81,106 @@ def dashboard():
 
     current_time = get_indian_time()
     available_now = {}
-    qa_availability = {}
+    upcoming_scheduled = {}
     breaks = {}
 
-    conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=DictCursor)
-    
-    # Fetch doctor availability
-    cursor.execute("SELECT * FROM availability WHERE availability_start <= %s AND availability_end >= %s", (current_time, current_time))
-    available_doctors = cursor.fetchall()
+    # Retrieve availability data from the database
+    availabilities = Availability.query.all()
+    for availability in availabilities:
+        if availability.start_time <= current_time <= availability.end_time:
+            available_now[availability.user.username] = availability.end_time.strftime('%Y-%m-%d %H:%M')
+        elif availability.start_time > current_time:
+            upcoming_scheduled[availability.user.username] = (
+                availability.start_time.strftime('%Y-%m-%d %H:%M'), 
+                availability.end_time.strftime('%Y-%m-%d %H:%M')
+            )
 
-    # Fetch QA availability
-    cursor.execute("SELECT * FROM qa_availability WHERE availability_start <= %s AND availability_end >= %s", (current_time, current_time))
-    available_qas = cursor.fetchall()
+    # Retrieve breaks data from the database
+    breaks_data = Break.query.all()
+    for break_info in breaks_data:
+        if current_time <= break_info.break_end:
+            breaks[break_info.user.username] = break_info.break_end.strftime('%Y-%m-%d %H:%M')
 
-    # Fetch doctor breaks
-    cursor.execute("SELECT * FROM breaks WHERE break_end >= %s", (current_time,))
-    active_breaks = cursor.fetchall()
-
-    # Map doctors' availability and breaks
-    for doctor in available_doctors:
-        available_now[doctor['doctor_id']] = doctor['availability_end'].strftime('%Y-%m-%d %H:%M')
-
-    for break_item in active_breaks:
-        breaks[break_item['doctor_id']] = break_item['break_end'].strftime('%Y-%m-%d %H:%M')
-
-    # Map QA availability
-    for qa in available_qas:
-        qa_availability[qa['qa_id']] = qa['availability_end'].strftime('%Y-%m-%d %H:%M')
-
-    # Doctor-specific dashboard
     if session['role'] == 'doctor':
         username = session['username']
         available_now = {username: available_now.get(username)}
         breaks = {username: breaks.get(username)}
         return render_template('dashboard.html', available_now=available_now, breaks=breaks, upcoming_scheduled={})
 
-    # QA Radiographer or Admin dashboard
-    if session['role'] == 'qa_radiographer' or session['role'] == 'admin':
-        cursor.execute("SELECT * FROM doctor_notes")
-        doctor_notes = cursor.fetchall()
-        return render_template('dashboard.html', available_now=available_now, qa_availability=qa_availability, breaks=breaks, upcoming_scheduled={}, doctor_notes=doctor_notes)
+    if session['role'] == 'qa_radiographer':
+        qa_availabilities = QAAvailability.query.all()
+        qa_avail = {qa_availability.user.username: (qa_availability.start_time, qa_availability.end_time)
+                    for qa_availability in qa_availabilities}
+        return render_template('dashboard.html', available_now=available_now, breaks=breaks, qa_avail=qa_avail, upcoming_scheduled=upcoming_scheduled)
 
-    cursor.close()
-    conn.close()
+    return render_template('dashboard.html', available_now=available_now, breaks=breaks, upcoming_scheduled=upcoming_scheduled)
 
-@app.route('/select_availability')
-def select_availability():
-    if 'username' not in session:
-        return redirect(url_for('index'))
-    
-    conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT username FROM users WHERE role = 'doctor'")
-    doctors = [row['username'] for row in cursor.fetchall()]
-    
-    cursor.close()
-    conn.close()
-    
-    return render_template('select_availability.html', doctors=doctors)
-
+# Route for setting availability (QA and doctors)
 @app.route('/set_availability', methods=['POST'])
 def set_availability():
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    user_role = session['role']
+    user = User.query.filter_by(username=session['username']).first()
     start_date = request.form['start_date']
     start_time = request.form['start_time']
     end_date = request.form['end_date']
     end_time = request.form['end_time']
-    cases_reported = request.form.get('cases_reported', 0)
-
+    
     availability_start = datetime.strptime(f'{start_date} {start_time}', '%Y-%m-%d %H:%M')
     availability_end = datetime.strptime(f'{end_date} {end_time}', '%Y-%m-%d %H:%M')
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    if session['role'] == 'doctor':
+        availability = Availability(user_id=user.id, start_time=availability_start, end_time=availability_end)
+    else:
+        availability = QAAvailability(qa_id=user.id, start_time=availability_start, end_time=availability_end)
 
-    if user_role == 'qa_radiographer':
-        # Validate cases reported
-        cursor.execute("SELECT cases_reported FROM qa_reports WHERE qa_id = (SELECT id FROM users WHERE username = %s) AND report_date = %s", (session['username'], get_indian_time().date()))
-        reported_cases = cursor.fetchone()
-        
-        if not reported_cases or reported_cases['cases_reported'] != int(cases_reported):
-            cursor.close()
-            conn.close()
-            return 'Number of cases reported does not match the previous day\'s report'
-
-        cursor.execute("""
-            INSERT INTO qa_availability (qa_id, availability_start, availability_end)
-            VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
-        """, (session['username'], availability_start, availability_end))
-    elif user_role == 'doctor':
-        cursor.execute("""
-            INSERT INTO availability (doctor_id, availability_start, availability_end)
-            VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
-        """, (session['username'], availability_start, availability_end))
-
-    conn.commit()
-    cursor.close()
-    conn.close()
+    db.session.add(availability)
+    db.session.commit()
 
     return redirect(url_for('dashboard'))
 
+# Route for taking a break
+@app.route('/take_break', methods=['POST'])
+def take_break():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    
+    user = User.query.filter_by(username=session['username']).first()
+    break_duration = int(request.form['break_duration'])
+    break_end_time = get_indian_time() + timedelta(minutes=break_duration)
+
+    break_info = Break(user_id=user.id, break_end=break_end_time)
+    db.session.add(break_info)
+    db.session.commit()
+
+    return redirect(url_for('dashboard'))
+
+# Route for admin control
+@app.route('/admin_control')
+def admin_control():
+    if 'username' not in session or session['role'] != 'admin':
+        return redirect(url_for('index'))
+    
+    doctors = User.query.filter_by(role='doctor').all()
+    return render_template('admin_control.html', users=doctors)
+
+# Route for adding a note
 @app.route('/add_note', methods=['POST'])
 def add_note():
-    if 'username' not in session or session['role'] not in ['admin', 'qa_radiographer']:
+    if 'username' not in session or session['role'] != 'admin':
         return redirect(url_for('index'))
-    
-    doctor = request.form['doctor']
+
+    doctor_id = request.form['doctor_id']
     note = request.form['note']
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    doctor_note = DoctorNote(doctor_id=doctor_id, note=note)
+    db.session.add(doctor_note)
+    db.session.commit()
 
-    cursor.execute("""
-        INSERT INTO doctor_notes (doctor_id, note)
-        VALUES ((SELECT id FROM users WHERE username = %s), %s)
-    """, (doctor, note))
+    return redirect(url_for('admin_control'))
 
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    return redirect(url_for('dashboard'))
-
-@app.route('/edit_note', methods=['POST'])
-def edit_note():
-    if 'username' not in session or session['role'] not in ['admin', 'qa_radiographer']:
-        return redirect(url_for('index'))
-
-    note_id = request.form['note_id']
-    new_note = request.form['new_note']
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE doctor_notes
-        SET note = %s
-        WHERE id = %s
-    """, (new_note, note_id))
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    return redirect(url_for('dashboard'))
-
-@app.route('/report_cases', methods=['POST'])
-def report_cases():
-    if 'username' not in session or session['role'] != 'qa_radiographer':
-        return redirect(url_for('index'))
-
-    cases_reported = request.form['cases_reported']
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        INSERT INTO qa_reports (qa_id, report_date, cases_reported)
-        VALUES ((SELECT id FROM users WHERE username = %s), %s, %s)
-    """, (session['username'], get_indian_time().date(), cases_reported))
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    return redirect(url_for('dashboard'))
-
+# Route for logout
 @app.route('/logout')
 def logout():
     session.pop('username', None)
@@ -240,10 +194,9 @@ def ping_app():
             print("Ping successful!")
         except Exception as e:
             print(f"Ping failed: {e}")
-        time.sleep(15)  # Ping every 15 seconds
+        time.sleep(15)
 
 if __name__ == '__main__':
-    # Start the pinging in a separate thread
     ping_thread = Thread(target=ping_app)
     ping_thread.daemon = True
     ping_thread.start()
