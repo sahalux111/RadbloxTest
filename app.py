@@ -1,7 +1,6 @@
 import time
 import requests
 from flask import Flask, render_template, request, redirect, url_for, session
-from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from threading import Thread
 import psycopg2
@@ -41,7 +40,8 @@ def login():
     cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
     user = cursor.fetchone()
 
-    if user and check_password_hash(user['password'], password):
+    # Direct password comparison without hash
+    if user and user['password'] == password:
         session['username'] = username
         session['role'] = user['role']
         return redirect(url_for('dashboard'))
@@ -218,7 +218,6 @@ if __name__ == '__main__':
     ping_thread.start()
 
     app.run(debug=True)
-
 
 
   
