@@ -9,10 +9,10 @@ app.secret_key = 'your_secret_key'
 # Database connection
 def get_db_connection():
     conn = psycopg2.connect(
-        dbname='your_dbname',
-        user='your_user',
-        password='your_password',
-        host='your_host'
+        dbname='radbloxdashboard',
+        user='radblox',
+        password='ntupYx7U3hhVtxt8Y4Iq2uQQ4WuWmkjR',
+        host='dpg-creov63v2p9s73d1bm7g-a'
     )
     return conn
 
