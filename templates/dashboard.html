@@ -4,45 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <header>
-        <h1>{{ session['role']|capitalize }} Dashboard</h1>
-        <nav>
-            <a href="{{ url_for('logout') }}">Logout</a>
-        </nav>
-    </header>
-
-    <main>
-        <h2>Welcome, {{ session['username'] }}</h2>
-
-        <!-- Availability toggle -->
-        <form method="POST" action="{{ url_for('set_availability_status') }}">
-            <button type="submit" name="action" value="available">Available</button>
-            <button type="submit" name="action" value="unavailable">Unavailable</button>
-        </form>
-
-        <!-- Doctor/QA-specific availability information -->
-        {% if session['role'] == 'doctor' and doctor_availability %}
-            <p>Currently available until: {{ doctor_availability.end_time or "Open-ended" }}</p>
-            <form method="POST" action="{{ url_for('set_notes') }}">
-                <textarea name="notes">{{ doctor_availability.notes }}</textarea>
-                <button type="submit">Save Notes</button>
-            </form>
-        {% elif session['role'] == 'qa_radiographer' and qa_availability %}
-            <p>Currently available until: {{ qa_availability.end_time or "Open-ended" }}</p>
-            <form method="POST" action="{{ url_for('set_notes') }}">
-                <textarea name="notes">{{ qa_availability.notes }}</textarea>
-                <button type="submit">Save Notes</button>
-            </form>
-        {% else %}
-            <p>You are not available right now.</p>
-        {% endif %}
-    </main>
-
-    <footer>
-        <p>&copy; 2023 System</p>
-    </footer>
+    <h1>Welcome, {{ session.username }}!</h1>
+    <h2>Available Now</h2>
+    <ul>
+        {% for doctor, end_time in available_now.items() %}
+            <li>{{ doctor }} - Available until {{ end_time }}</li>
+        {% endfor %}
+    </ul>
+    <h2>Upcoming Schedule</h2>
+    <ul>
+        {% for doctor, times in upcoming_scheduled.items() %}
+            <li>{{ doctor }} - {{ times }}</li>
+        {% endfor %}
+    </ul>
+    <h2>Breaks</h2>
+    <ul>
+        {% for doctor, end_time in breaks.items() %}
+            <li>{{ doctor }} - Break ends at {{ end_time }}</li>
+        {% endfor %}
+    </ul>
+    {% if session.role == 'admin' or session.role == 'qa_radiographer' %}
+        <h2>Doctor Notes</h2>
+        <ul>
+            {% for doctor, note in doctor_notes.items() %}
+                <li>{{ doctor }} - {{ note }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <a href="{{ url_for('select_availability') }}">Set Availability</a>
+    <a href="{{ url_for('take_break') }}">Take Break</a>
+    {% if session.role == 'admin' %}
+        <a href="{{ url_for('admin_control') }}">Admin Control</a>
+    {% endif %}
+    <a href="{{ url_for('index') }}">Logout</a>
 </body>
 </html>
