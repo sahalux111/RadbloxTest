@@ -1,24 +1,24 @@
-{% if session['role'] == 'doctor' %}
-<div class="dashboard-section">
-    <h3>Select Availability</h3>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Availability</title>
+</head>
+<body>
+    <h1>Select Availability</h1>
     <form action="{{ url_for('set_availability') }}" method="post">
-        <div class="mb-3">
-            <label for="start_date" class="form-label">Start Date</label>
-            <input type="date" id="start_date" name="start_date" class="form-control" required>
-        </div>
-        <div class="mb-3">
-            <label for="start_time" class="form-label">Start Time</label>
-            <input type="time" id="start_time" name="start_time" class="form-control" required>
-        </div>
-        <div class="mb-3">
-            <label for="end_date" class="form-label">End Date</label>
-            <input type="date" id="end_date" name="end_date" class="form-control" required>
-        </div>
-        <div class="mb-3">
-            <label for="end_time" class="form-label">End Time</label>
-            <input type="time" id="end_time" name="end_time" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Set Availability</button>
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date" name="start_date" required><br>
+        <label for="start_time">Start Time:</label>
+        <input type="time" id="start_time" name="start_time" required><br>
+        <label for="end_date">End Date:</label>
+        <input type="date" id="end_date" name="end_date" required><br>
+        <label for="end_time">End Time:</label>
+        <input type="time" id="end_time" name="end_time" required><br>
+        <input type="submit" value="Set Availability">
     </form>
-</div>
-{% endif %}
+    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+</body>
+</html>
+
