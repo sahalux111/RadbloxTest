@@ -18,7 +18,10 @@
         <input type="time" id="end_time" name="end_time" required><br>
         <input type="submit" value="Set Availability">
     </form>
+    <form action="{{ url_for('set_availability_now') }}" method="post">
+        <input type="submit" name="start_now" value="Available Now">
+        <input type="submit" name="end_now" value="Unavailable">
+    </form>
     <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
 </body>
 </html>
-
