@@ -3,41 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Doctor Dashboard</title>
 </head>
 <body>
-    <h1>Welcome, {{ session.username }}!</h1>
-    <h2>Available Now</h2>
+    <h1>Doctor Dashboard</h1>
+    <h2>Available Now:</h2>
     <ul>
-        {% for doctor, end_time in available_now.items() %}
-            <li>{{ doctor }} - Available until {{ end_time }}</li>
+        {% for user, end_time in available_now.items() %}
+            <li>{{ user }} - Available until {{ end_time }}</li>
         {% endfor %}
     </ul>
-    <h2>Upcoming Schedule</h2>
-    <ul>
-        {% for doctor, times in upcoming_scheduled.items() %}
-            <li>{{ doctor }} - {{ times }}</li>
-        {% endfor %}
-    </ul>
-    <h2>Breaks</h2>
-    <ul>
-        {% for doctor, end_time in breaks.items() %}
-            <li>{{ doctor }} - Break ends at {{ end_time }}</li>
-        {% endfor %}
-    </ul>
-    {% if session.role == 'admin' or session.role == 'qa_radiographer' %}
-        <h2>Doctor Notes</h2>
-        <ul>
-            {% for doctor, note in doctor_notes.items() %}
-                <li>{{ doctor }} - {{ note }}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
     <a href="{{ url_for('select_availability') }}">Set Availability</a>
-    <a href="{{ url_for('take_break') }}">Take Break</a>
-    {% if session.role == 'admin' %}
-        <a href="{{ url_for('admin_control') }}">Admin Control</a>
-    {% endif %}
-    <a href="{{ url_for('index') }}">Logout</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
 </body>
 </html>
