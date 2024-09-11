@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Dashboard</title>
+</head>
+<body>
+    <h1>QA Dashboard</h1>
+    <h2>Your Availability:</h2>
+    {% if start_time and end_time %}
+        <p>Available from {{ start_time }} to {{ end_time }}</p>
+    {% else %}
+        <p>No availability set.</p>
+    {% endif %}
+    <a href="{{ url_for('qa_notes') }}">Notes</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>
