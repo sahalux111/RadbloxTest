@@ -1,21 +1,19 @@
-import time
-import requests
 import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, session, abort
 from datetime import datetime, timedelta
-from threading import Thread
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
 # Database connection
 def get_db_connection():
-    conn = psycopg2.connect(
-        dbname='radbloxdashboard',
-        user='radblox',
-        password='ntupYx7U3hhVtxt8Y4Iq2uQQ4WuWmkjR',
-        host='dpg-creov63v2p9s73d1bm7g-a'
-    )
+    try:
+        conn = psycopg2.connect(
+            dbname='radbloxdashboard',
+            user='radblox',
+            password='ntupYx7U3hhVtxt8Y4Iq2uQQ4WuWmkjR',
+            host='dpg-creov63v2p9s73d1bm7g-a'
+        )
         return conn
     except psycopg2.OperationalError as e:
         print(f"Database connection error: {e}")
@@ -28,7 +26,7 @@ def get_indian_time():
 # Retrieve all users from the database
 def get_users():
     try:
-        conn = connect_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT username, password, role FROM users")
         users = {row[0]: {'password': row[1], 'role': row[2]} for row in cursor.fetchall()}
@@ -42,7 +40,7 @@ def get_users():
 # Retrieve availability for a user
 def get_user_availability(username):
     try:
-        conn = connect_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT start_time, end_time FROM availability WHERE username = %s", (username,))
         result = cursor.fetchone()
@@ -56,7 +54,7 @@ def get_user_availability(username):
 # Save availability for a user
 def set_user_availability(username, start_time, end_time):
     try:
-        conn = connect_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("INSERT INTO availability (username, start_time, end_time) VALUES (%s, %s, %s) "
                        "ON CONFLICT (username) DO UPDATE SET start_time = %s, end_time = %s", 
@@ -71,7 +69,7 @@ def set_user_availability(username, start_time, end_time):
 # Get notes for a user
 def get_user_notes(username):
     try:
-        conn = connect_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT note FROM notes WHERE username = %s", (username,))
         result = cursor.fetchone()
@@ -85,7 +83,7 @@ def get_user_notes(username):
 # Save a note for a user
 def set_user_notes(username, note):
     try:
-        conn = connect_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("INSERT INTO notes (username, note) VALUES (%s, %s) "
                        "ON CONFLICT (username) DO UPDATE SET note = %s", 
@@ -239,20 +237,6 @@ def logout():
     session.pop('role', None)
     return redirect(url_for('index'))
 
-def ping_app():
-    while True:
-        try:
-            requests.get('aa')  # Replace with your app's URL
-            print("Ping successfull")
-        except Exception as e:
-            print(f"Ping failed: {e}")
-        time.sleep(15)  # Ping every 15 seconds
-
 if __name__ == '__main__':
-    # Start the pinging in a separate thread
-    ping_thread = Thread(target=ping_app)
-    ping_thread.daemon = True
-    ping_thread.start()
-
     app.run(debug=True)
 
