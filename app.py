@@ -1,7 +1,7 @@
 import time
 import requests
 import psycopg2
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, abort
 from datetime import datetime, timedelta
 from threading import Thread
 
@@ -16,7 +16,10 @@ def get_db_connection():
         password='ntupYx7U3hhVtxt8Y4Iq2uQQ4WuWmkjR',
         host='dpg-creov63v2p9s73d1bm7g-a'
     )
-    return conn
+        return conn
+    except psycopg2.OperationalError as e:
+        print(f"Database connection error: {e}")
+        abort(500)  # Internal Server Error
 
 # Get the current time in Indian Standard Time (UTC+5:30)
 def get_indian_time():
@@ -24,63 +27,93 @@ def get_indian_time():
 
 # Retrieve all users from the database
 def get_users():
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT username, password, role FROM users")
-    users = {row[0]: {'password': row[1], 'role': row[2]} for row in cursor.fetchall()}
-    cursor.close()
-    conn.close()
-    return users
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, password, role FROM users")
+        users = {row[0]: {'password': row[1], 'role': row[2]} for row in cursor.fetchall()}
+        cursor.close()
+        conn.close()
+        return users
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        abort(500)
 
 # Retrieve availability for a user
 def get_user_availability(username):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT start_time, end_time FROM availability WHERE username = %s", (username,))
-    result = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    return result
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT start_time, end_time FROM availability WHERE username = %s", (username,))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return result
+    except Exception as e:
+        print(f"Error fetching availability: {e}")
+        abort(500)
 
 # Save availability for a user
 def set_user_availability(username, start_time, end_time):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO availability (username, start_time, end_time) VALUES (%s, %s, %s) ON CONFLICT (username) DO UPDATE SET start_time = %s, end_time = %s", 
-                   (username, start_time, end_time, start_time, end_time))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO availability (username, start_time, end_time) VALUES (%s, %s, %s) "
+                       "ON CONFLICT (username) DO UPDATE SET start_time = %s, end_time = %s", 
+                       (username, start_time, end_time, start_time, end_time))
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Error saving availability: {e}")
+        abort(500)
 
 # Get notes for a user
 def get_user_notes(username):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT note FROM notes WHERE username = %s", (username,))
-    result = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    return result[0] if result else None
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT note FROM notes WHERE username = %s", (username,))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return result[0] if result else None
+    except Exception as e:
+        print(f"Error fetching notes: {e}")
+        abort(500)
 
 # Save a note for a user
 def set_user_notes(username, note):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO notes (username, note) VALUES (%s, %s) ON CONFLICT (username) DO UPDATE SET note = %s", 
-                   (username, note, note))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO notes (username, note) VALUES (%s, %s) "
+                       "ON CONFLICT (username) DO UPDATE SET note = %s", 
+                       (username, note, note))
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Error saving notes: {e}")
+        abort(500)
 
 # Function to get a list of doctor names
 def get_doctors():
-    users = get_users()
-    return [user for user, details in users.items() if details['role'] == 'doctor']
+    try:
+        users = get_users()
+        return [user for user, details in users.items() if details['role'] == 'doctor']
+    except Exception as e:
+        print(f"Error fetching doctors: {e}")
+        abort(500)
 
 # Function to get a list of QA users
 def get_qa_users():
-    users = get_users()
-    return [user for user, details in users.items() if details['role'] == 'qa_radiographer']
+    try:
+        users = get_users()
+        return [user for user, details in users.items() if details['role'] == 'qa_radiographer']
+    except Exception as e:
+        print(f"Error fetching QA users: {e}")
+        abort(500)
 
 @app.route('/')
 def index():
@@ -92,13 +125,16 @@ def index():
 def login():
     username = request.form['username']
     password = request.form['password']
-    users = get_users()
-
-    if username in users and users[username]['password'] == password:
-        session['username'] = username
-        session['role'] = users[username]['role']
-        return redirect(url_for('dashboard'))
-    return 'Invalid credentials'
+    try:
+        users = get_users()
+        if username in users and users[username]['password'] == password:
+            session['username'] = username
+            session['role'] = users[username]['role']
+            return redirect(url_for('dashboard'))
+        return 'Invalid credentials'
+    except Exception as e:
+        print(f"Error during login: {e}")
+        abort(500)
 
 @app.route('/dashboard')
 def dashboard():
@@ -206,8 +242,8 @@ def logout():
 def ping_app():
     while True:
         try:
-            requests.get('https://your-app-url.com')  # Replace with your app's URL
-            print("Ping successful!")
+            requests.get('https://radbloxtest-1.onrender.com')  # Replace with your app's URL
+            print("Ping successfull")
         except Exception as e:
             print(f"Ping failed: {e}")
         time.sleep(15)  # Ping every 15 seconds
