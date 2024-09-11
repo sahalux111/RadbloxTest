@@ -242,7 +242,7 @@ def logout():
 def ping_app():
     while True:
         try:
-            requests.get('https://radbloxtest-1.onrender.com')  # Replace with your app's URL
+            requests.get('aa')  # Replace with your app's URL
             print("Ping successfull")
         except Exception as e:
             print(f"Ping failed: {e}")
